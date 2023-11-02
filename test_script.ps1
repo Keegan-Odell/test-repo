@@ -128,8 +128,8 @@ function getScanID {
         } 
 
         #this is to prevent a super long loop. If there is a problem we shutdown and ask the user to try again
-        if ($num -gt 10) {
-            Write-Host "There was a problem retrieving the Scan ID"
+        if ($num -gt 9) {
+            Write-Host "There was a problem retrieving the Scan ID - please check the given project name"
             Exit 1
         }
 
@@ -161,7 +161,7 @@ function createReportID {
 
     #No idea why I have to do -1 here - but its almost like the call of getCSVReport is finishing before this one
     #By adding this I think I get the right report - could not tell you why though. It also only sends in XML
-    #any ideas on how to not subtract one let me know - the app is still working as intended though
+    #any ideas on how to not subtract one let me know - the app is still working as intended though - it grabs the most current report
     return $response.reportID - 1
 }
 
@@ -179,43 +179,39 @@ function getXMLReport {
     }
 
     #this is the response when we hit that API
-    $response = Invoke-RestMethod -Uri $uri -Headers $headerParams -Method Get -ContentType "application/xml"
+    try {
+        $response = Invoke-RestMethod -Uri $uri -Headers $headerParams -Method Get -ContentType "application/xml"
+    }
+    catch {
+        Write-Host "No response received from the API."
+    }
+    
 
     #This is to santizie the response and remove the beginning characters which prevent the creation of an XML file
     $response = $response -replace "ï»¿", ""
 
-    #If the response exisits we save that file to our drive
-    if ($response) {
-        try {
-            $response | Out-File -FilePath "C:\Users\odellkc\File.xml"
-            Write-Host "XML report saved to $OutputPath"
-        }
-        catch {
-            Write-Host "Error saving the XML report to a file: C:\Users\odellkc\File.xml"
-        }
-    }
-    else {
-        Write-Host "No response received from the API."
-    }
+
+    #This returns our sanitized response that we can pair to a variable
+    return $response
 }
 
 
-getXMLReport
-
 #_________________________________________________________________________________
 
-# This section will be gathering the infor for the Work Ticket in Azure - then calling the function to write it
+# This section will be gathering the info for the Work Ticket in Azure - then calling the function to write it
 
-[xml]$xmlData = Get-Content -Path "C:\Users\odellkc\File6.xml"
+#This sets our xmlResponse to the xmlData variable and we make sure it is in xml format with the [xml] tag
+[xml]$xmlData = getXMLReport
 
+#This is the base that we will use to navigate inside our XML file - returns an array of queries for each issue
 $queries = $xmlData.DocumentElement.Query
 
 
-
+#for each query inside of our queries we gather the title, severity, file, and link to make our ticket - we then call our makeTicket function to create the tickets
 foreach ($query in $queries) {
     $title = $query.name
     $severity = $query.Severity
-    if ($query.Result.length -ne 1) {
+    if ($query.Result.length -ne 1) { #If this particular query has more than 1 result that means the vunerability exists multipe time in the code - we will make a ticket for each instance 
         foreach ($result in $query.Result) {
             $file = $result.FileName
             $link = $result.DeepLink
