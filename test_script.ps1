@@ -122,7 +122,7 @@ function getScanID {
         }
 
         #We check if this is the project we are looking for by comparing it to the variable in the pipeline
-        if($response[$num - 1].project.name -eq $projectName) {
+        if ($response[$num - 1].project.name -eq $projectName) {
             #We return the response id
             return $response[$num - 1].id
         } 
@@ -211,7 +211,8 @@ $queries = $xmlData.DocumentElement.Query
 foreach ($query in $queries) {
     $title = $query.name
     $severity = $query.Severity
-    if ($query.Result.length -ne 1) { #If this particular query has more than 1 result that means the vunerability exists multipe time in the code - we will make a ticket for each instance 
+    if ($query.Result.length -ne 1) {
+        #If this particular query has more than 1 result that means the vunerability exists multipe time in the code - we will make a ticket for each instance 
         foreach ($result in $query.Result) {
             $file = $result.FileName
             $link = $result.DeepLink
