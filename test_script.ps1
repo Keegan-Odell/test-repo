@@ -217,13 +217,13 @@ foreach ($query in $queries) {
             $link = $result.DeepLink
     
             $description = "
-            Vulnerability: $title
-            Severity: $severity
-            File Name: $file
-            
-            Details: $link
+            <div>Vulnerability: $title</div>
+            <div>Severity: $severity</div>
+            <div>File_Name: $file</div>
+            <br>
+            <div>Details: <a href=`"$link`">$link</a></div>
             "
-
+            #call the createWorkTicket item - check line 15
             createWorkTicket -op "add" -titlePath "/fields/System.Title" -from $null -title "$title || Severity: $severity" -descriptionPath “/fields/System.Description” -description $description
         }
     }
@@ -238,7 +238,7 @@ foreach ($query in $queries) {
         <br>
         <div>Details: <a href=`"$link`">$link</a></div>
         "
-
+        #call the createWorkTicket item - check line 15
         createWorkTicket -op "add" -titlePath "/fields/System.Title" -from $null -title "$title || Severity: $severity" -descriptionPath “/fields/System.Description” -description $description
     }
 }
