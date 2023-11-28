@@ -4,10 +4,7 @@ param (
     [string]$organization,
 
     [Parameter(Mandatory = $true)]
-    [string]$project,
-
-    [Parameter(Mandatory = $true)]
-    [string]$projectName
+    [string]$project
 )
 #_________________________________________________________________________________________________________________________________
 
@@ -99,46 +96,25 @@ function getAccessToken {
 $accessToken = getAccessToken
 
 #using our accessToken we will get the scanID of the latest scan - this will help us grab the most current scan - this will be run right after a scan is generated making sure we grab the most recent
-function getScanID {
-    $num = 1
-    while ($true) {
-        #this is the URI which hits the api scans - we loop through the api until we hit the scan which matches our pipelines given scan - we find the most current scan and only go to 10 to prevent an endless loop
-        $uri = "https://daikinapplied.checkmarx.net/cxrestapi/sast/scans?last=$num"
+function grabScanId {
+    # Constructing the path to the file within the agent's directory
+    $filePath = "\a\1"  # Adjust the path as needed
+
+    # Retrieve a specific JSON file within the directory
+    $jsonFiles = Get-ChildItem -Path $filePath -Filter *.json  # Replace *.json with the specific file name if needed
     
-        #header params as a hashtable
-        $headerParams = @{
-            Authorization = "Bearer $accessToken"
-            Accept        = "application/json;v=1.0"
-        }
-
-        #response grabs the scan ID
-        try {
-            $response = Invoke-RestMethod -Uri $uri -Method Get -Headers $headerParams
-            write-host $num
-        }
-        catch {
-            Write-Host "There was a problem retrieving the Scan ID"
-            Exit 1
-        }
-
-        #We check if this is the project we are looking for by comparing it to the variable in the pipeline
-        if ($response[$num - 1].project.name -eq $projectName) {
-            #We return the response id
-            return $response[$num - 1].id
-        } 
-
-        #this is to prevent a super long loop. If there is a problem we shutdown and ask the user to try again
-        if ($num -gt 9) {
-            Write-Host "There was a problem retrieving the Scan ID - please check the given project name"
-            Exit 1
-        }
-
-        $num++
+    if ($jsonFiles.Count -gt 0) {
+        $specificJsonFile = $jsonFiles[0].FullName  # Assuming you want the first file found
+        $jsonObject = Get-Content -Path $specificJsonFile -Raw | ConvertFrom-Json
+        return $jsonObject
+    } else {
+        Write-Output "No JSON file found in the directory: $filePath"
     }
 }
 
-#We assign the scanID to this variable 
-$scanID = getScanID
+# Call the function and assign the output to the $JsonObject variable
+$JsonObject = grabScanId
+$scanID = $JsonObject.scan
 
 #this will create a report ID - this report ID will allow us to create a future CSV with full scan results 
 function createReportID {
@@ -160,7 +136,7 @@ function createReportID {
     $response = Invoke-RestMethod -Uri $uri -Method Post -Headers $headerParams -Body $bodyParams
 
     #No idea why I have to do -1 here - but its almost like the call of getCSVReport is finishing before this one
-    #By adding this I think I get the right report - could not tell you why though. It also only sends in XML
+    #By adding this I get the right report - could not tell you why though. It also only sends in XML
     #any ideas on how to not subtract one let me know - the app is still working as intended though - it grabs the most current report
     return $response.reportID - 1
 }
